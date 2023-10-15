@@ -14,7 +14,8 @@ import 'package:injectable/injectable.dart' as _i2;
 
 import 'features/ble/data/repositories/ble_repository_ipml.dart' as _i5;
 import 'features/ble/domain/repositories/ble_repository.dart' as _i4;
-import 'injectable_modules.dart' as _i6;
+import 'features/ble/presentation/blocs/ble_cubit/ble_cubit.dart' as _i6;
+import 'injectable_modules.dart' as _i7;
 
 extension GetItInjectableX on _i1.GetIt {
 // initializes the registration of main-scope dependencies inside of GetIt
@@ -31,8 +32,10 @@ extension GetItInjectableX on _i1.GetIt {
     gh.lazySingleton<_i3.FlutterReactiveBle>(() => bleService.firebaseAuth);
     gh.lazySingleton<_i4.BleRepository>(() => _i5.BleRepositoryImpl(
         flutterReactiveBle: gh<_i3.FlutterReactiveBle>()));
+    gh.lazySingleton<_i6.BleCubit>(
+        () => _i6.BleCubit(bleRepository: gh<_i4.BleRepository>()));
     return this;
   }
 }
 
-class _$BleService extends _i6.BleService {}
+class _$BleService extends _i7.BleService {}

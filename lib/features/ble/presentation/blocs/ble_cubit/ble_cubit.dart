@@ -1,14 +1,16 @@
 import 'dart:async';
 
-import 'package:bloc/bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:injectable/injectable.dart';
 
 import 'package:my_ble_scanner/features/ble/domain/repositories/ble_repository.dart';
 
 part 'ble_cubit.freezed.dart';
 part 'ble_state.dart';
 
+@lazySingleton
 class BleCubit extends Cubit<BleState> {
   final BleRepository bleRepository;
   StreamSubscription? _streamSubscription;
@@ -24,9 +26,10 @@ class BleCubit extends Cubit<BleState> {
       (failure) async => emit(BleState.error(message: failure.message)),
       (devicesStream) async {
         _streamSubscription = devicesStream.listen((discoveredDevice) {
-          _updateState(device: discoveredDevice);
-        }, onError: (_) {
-          emit(const BleState.error(message: 'BLE Error'));
+          _updateState(newDevice: discoveredDevice);
+        }, onError: (error) {
+          _streamSubscription?.cancel();
+          emit(BleState.error(message: error.toString()));
         }, onDone: () {
           _updateState(isScanning: false);
         });
@@ -35,38 +38,53 @@ class BleCubit extends Cubit<BleState> {
 
     Future.delayed(
       const Duration(seconds: 10),
-      () => _updateState(isScanning: false),
+      () => state.mapOrNull(
+        scanner: (state) {
+          if (state.isScanning) {
+            _updateState(isScanning: false);
+          }
+        },
+      ),
     );
   }
 
-  void _updateState({DiscoveredDevice? device, bool isScanning = true}) {
-    if (device == null) {
+  void _updateState({DiscoveredDevice? newDevice, bool isScanning = true}) {
+    if (newDevice == null) {
       if (!isScanning) {
         _streamSubscription?.cancel();
       }
-      final List<DiscoveredDevice> devices = state.maybeMap(
-        scanner: (state) => state.devices,
-        orElse: () => [],
-      );
+      final List<DiscoveredDevice> devices = state.mapOrNull(
+            scanner: (state) {
+              if (state.isScanning) {
+                return state.devices;
+              }
+              return null;
+            },
+          ) ??
+          [];
       emit(BleState.scanner(devices: devices, isScanning: isScanning));
     } else {
-      if (device.name.isNotEmpty) {
+      if (newDevice.name.isNotEmpty) {
         state.maybeMap(
           scanner: (state) {
-            emit(
-              state.copyWith(
-                devices: [...state.devices, device],
-                isScanning: isScanning,
-              ),
-            );
+            if (!state.devices.any((device) => device.id == newDevice.id)) {
+              emit(
+                state.copyWith(
+                  devices: [...state.devices, newDevice],
+                  isScanning: isScanning,
+                ),
+              );
+            }
           },
           orElse: () => emit(
-            BleState.scanner(devices: [device], isScanning: isScanning),
+            BleState.scanner(devices: [newDevice], isScanning: isScanning),
           ),
         );
       }
     }
   }
+
+  void stop() => _updateState(isScanning: false);
 
   @override
   Future<void> close() {
