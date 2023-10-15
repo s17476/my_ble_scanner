@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_ble_scanner/features/ble/presentation/blocs/ble_cubit/ble_cubit.dart';
 import 'package:my_ble_scanner/injection.dart';
 
 void main() {
@@ -35,8 +36,12 @@ class MyHomePage extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primary,
         title: Text(title),
       ),
-      body: Center(
-        child: Text('Center'),
+      body: BlocBuilder<BleCubit, BleState>(
+        builder: (context, state) {
+          return Center(
+            child: Text('Center'),
+          );
+        },
       ),
       // floatingActionButton: FloatingActionButton(
       //   onPressed: _incrementCounter,
